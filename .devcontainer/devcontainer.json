@@ -1,8 +1,8 @@
 {
-    "name": "pyrotest",
+    "name": "oteltest",
     "portsAttributes": {
         "6060": {
-            "label": "pyrotest package documentation",
+            "label": "oteltest package documentation",
             "onAutoForward": "notify",
             "protocol": "http"
         }
