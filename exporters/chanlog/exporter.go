@@ -28,7 +28,8 @@ import (
 // their log records.
 type RecordsChannel chan sdklog.Record
 
-// Exporter writes log records to a Go chan. Use [New] to create an Exporter.
+// Exporter writes log records to a Go channel of type [RecordsChannel] (chan of
+// [sdklog.Record]). Use [New] to create an Exporter.
 type Exporter struct {
 	ch atomic.Pointer[RecordsChannel]
 }
