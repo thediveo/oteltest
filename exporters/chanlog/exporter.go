@@ -30,10 +30,12 @@ type Exporter struct {
 
 var _ (sdklog.Exporter) = (*Exporter)(nil)
 
-// New returns a new log record exporter, configured with the passed options. If
-// no log record channel has been explicitly configured using [WithChannel], a
-// suitable channel will be automatically created and can later be retrieved
-// using [Exporter.Ch].
+// New returns a new log record exporter, configured with the passed options.
+//
+// If no log record channel has been explicitly configured using [WithChannel],
+// a suitable channel will be implicitly created and can later be retrieved
+// using [Exporter.Ch]. Please note that the minimum configurable buffer size of
+// an implicitly created channel is 1.
 func New(opts ...Option) (*Exporter, error) {
 	var o options
 	for _, opt := range opts {
@@ -60,27 +62,32 @@ func (e *Exporter) Ch() LogRecordsChannel {
 	return *ch
 }
 
-// Export log records to the configured channel.
+// Export log records to the configured channel. It does nothing after
+// [Exporter.Shutdown] has been called.
 func (e *Exporter) Export(ctx context.Context, records []sdklog.Record) error {
 	ch := e.ch.Load()
 	if ch == nil {
-		return nil
+		return ctx.Err()
 	}
 
 	for _, rec := range records {
-		if err := ctx.Err(); err != nil {
-			return err
+		select {
+		case *ch <- rec:
+		case <-ctx.Done():
+			return ctx.Err()
 		}
-		*ch <- rec
 	}
-	return nil
+	return ctx.Err()
 }
 
 // Shutdown the Exporter so that any later calls to [Exporter.Export] will
-// perform no operation anymore and closes the writing end of the exporter's log
-// record channel.
+// perform no operation anymore and additionally closes the writing end of the
+// exporter's log record channel.
 func (e *Exporter) Shutdown(context.Context) error {
-	e.ch.Store(nil)
+	ch := e.ch.Swap(nil)
+	if ch != nil {
+		close(*ch)
+	}
 	return nil
 }
 
