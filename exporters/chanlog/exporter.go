@@ -21,13 +21,19 @@ import (
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 )
 
-type LogRecordsChannel chan sdklog.Record
+// RecordsChannel channels OTel SDK log records as emitted by an OTel
+// [sdklog.Logger]. The log records coming through the channel are of type
+// [sdklog.Record], not to be confused with the
+// [go.opentelemetry.io/otel/log.Record] type used when applications create
+// their log records.
+type RecordsChannel chan sdklog.Record
 
 // Exporter writes log records to a Go chan. Use [New] to create an Exporter.
 type Exporter struct {
-	ch atomic.Pointer[LogRecordsChannel]
+	ch atomic.Pointer[RecordsChannel]
 }
 
+// statically ensure that we fulfill the OTel logging SDK's Exporter interface.
 var _ (sdklog.Exporter) = (*Exporter)(nil)
 
 // New returns a new log record exporter, configured with the passed options.
@@ -43,7 +49,7 @@ func New(opts ...Option) (*Exporter, error) {
 	}
 
 	if o.ch == nil {
-		o.ch = make(LogRecordsChannel, max(o.size, 1))
+		o.ch = make(RecordsChannel, max(o.capacity, 1))
 	}
 
 	e := &Exporter{}
@@ -54,7 +60,7 @@ func New(opts ...Option) (*Exporter, error) {
 
 // Ch returns the log record channel, or nil after [Exporter.Shutdown] has been
 // called.
-func (e *Exporter) Ch() LogRecordsChannel {
+func (e *Exporter) Ch() RecordsChannel {
 	ch := e.ch.Load()
 	if ch == nil {
 		return nil

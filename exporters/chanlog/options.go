@@ -14,20 +14,26 @@
 
 package chanlog
 
+// Option configures a log record channel [Exporter].
 type Option func(*options)
 
 type options struct {
-	size int
-	ch   LogRecordsChannel
+	capacity int
+	ch       RecordsChannel
 }
 
-func WithSize(s int) func(o *options) {
+// WithCap configures the capacity of the implicit log record channel, unless an
+// explicit log record channel is configured using [WithChannel]. The specified
+// capacity is clamped to at least 1.
+func WithCap(capacity int) func(o *options) {
 	return func(o *options) {
-		o.size = s
+		o.capacity = max(capacity, 1)
 	}
 }
 
-func WithChannel(ch LogRecordsChannel) func(o *options) {
+// WithChannel configures an explicit log record channel. Any [WithCap]
+// configuration is ignored.
+func WithChannel(ch RecordsChannel) func(o *options) {
 	return func(o *options) {
 		o.ch = ch
 	}
